@@ -1,43 +1,52 @@
-import { useContractDeploy } from "@/src/hooks/useContractDeploy";
 import { Box, Button, Flex, Input, Text, Image } from "@chakra-ui/react";
 import { useContext, useEffect, useState } from "react";
 import TokenTemplate from "../../utils/TokenTemplate.json";
-import { useAccount, useSendTransaction } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
+import { useAccount } from "wagmi";
+import { useWriteContract } from "wagmi";
+import { waitForTransactionReceipt } from "@wagmi/core";
 import { config } from "./config";
-import { sepolia } from "wagmi/chains";
+import { sepolia } from "@wagmi/core/chains";
 import Link from "next/link";
 import { GlobalContext } from "@/src/context/GlobalContext";
 
-export default function LaunchToken({ setCurrentAction }: any) {
-  const [tokenName, setTokenName] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
-  const [tokenSupply, setTokenSupply] = useState("");
+export default function MintToken({ setCurrentAction }: any) {
+  const contract_address = "0x4cee8d36d1eBDF35914894AcB871B9b889c779E4";
+  const {tokenAddress, setTokenAddress} = useContext(GlobalContext);
+
+  const [tokenSupply, setTokenSupply] = useState(0);
   const [receiptHash, setReceiptHash] = useState("");
-  const [contractAddress, setContractAddress] = useState("");
   const [txStatus, setTxStatus] = useState("Not initiated");
-  const {setTokenAddress} = useContext(GlobalContext);
-  
-  const { isConnected, address } = useAccount();
-  const { sendTransaction } = useSendTransaction({
+
+  const { isConnected } = useAccount();
+  const { writeContract } = useWriteContract({
     mutation: {
       onSuccess(data, variables, context) {
-        console.log(data);
-        setTxStatus("pending");
+        console.log("Success");
         setReceiptHash(data);
+        console.log({ data, variables, context });
+      },
+
+      onSettled(data: any) {
+        setReceiptHash(data);
+      },
+
+      onError(error, variables, context) {
+        console.log("Error");
+        console.log({ error, variables, context });
+        setTxStatus("Failed");
       },
     },
   });
 
   useEffect(() => {
-    if(receiptHash !== "") {
-        getTxReceipt(receiptHash);
+    if (receiptHash && receiptHash !== "") {
+      console.log(receiptHash);
+      getTxReceipt(receiptHash);
     }
   }, [receiptHash]);
 
   const getTxReceipt = async (hash: any) => {
     setTxStatus("Pending");
-
     const receipt = await waitForTransactionReceipt(config, {
       hash,
       chainId: sepolia.id,
@@ -45,92 +54,67 @@ export default function LaunchToken({ setCurrentAction }: any) {
 
     setTxStatus("Success");
     console.log(receipt);
-    let address = receipt?.logs[0]?.address;
-    if(address) {
-      setContractAddress(address);
-      setTokenAddress(address);
-    }
   };
 
-  const handleDeployToken = async () => {
+  const handleMintToken = async () => {
     const supply = tokenSupply.toString() + "0".repeat(18);
-
-    //prepare deployment of ERC20
-    const deploymentConfig: any = {
-      abi: TokenTemplate.abi,
-      bytecode: TokenTemplate.bytecode,
-      args: [tokenName, tokenSymbol, supply],
-      libraries: [],
-      value: 0,
-      setContractAddress,
-      sendTransaction,
-    };
-
-    //deploy
-    if(isConnected) {
-      const { handleContractDeployment } = useContractDeploy(deploymentConfig);
-      const resp = await handleContractDeployment();
-      console.log(resp);
+    if (isConnected) {
+      writeContract({
+        abi: TokenTemplate.abi,
+        address: tokenAddress !== "" ? tokenAddress : contract_address,
+        functionName: "mint",
+        args: [supply],
+      });
     } else {
-      alert("Wallet not connected!");
+      alert("wallet not connected");
     }
   };
 
   return (
-    <Flex m="40px auto" width={"70%"}>
+    <Flex m="40px auto" width={"70%"} alignItems={"flex-start"}>
       <Box
         p="10px 20px"
         width={"60%"}
         mr="5%"
-        background={"#363355"}
-        color={"white"}
-        border="1px solid #445276"
+        background={"#63CEDD"}
         borderRadius={"10px"}
       >
-        <Box mt="20px">
-          <Text>Token Name:</Text>
+        {tokenAddress == "" && (
+          <Box textAlign={"left"} mb="20px">
+            <Text>Token Name: Toeken 1</Text>
+            <Text>Address: 0x4cee8d36d1eBDF35914894AcB871B9b889c779E4</Text>
+            <Text>Network: Ethereum Sepolia</Text>
+          </Box>
+        )}
+        <Box textAlign={"left"}>
+          <Text>Token Address: </Text>
           <Input
-            placeholder="Enter token name"
-            value={tokenName}
-            background={"#473D70"}
-            border={"none"}
+            placeholder="Enter contract address"
+            value={tokenAddress}
             onChange={(e: any) => {
-              setTokenName(e.target.value);
+              setTokenAddress(e.target.value);
             }}
           />
         </Box>
-        <Box mt="20px">
-          <Text>Token Symbol:</Text>
+        <Box textAlign={"left"}>
+          <Text>Mint amount: </Text>
           <Input
-            placeholder="Enter token symbol"
-            value={tokenSymbol}
-            background={"#473D70"}
-            border={"none"}
-            onChange={(e: any) => {
-              setTokenSymbol(e.target.value);
-            }}
-          />
-        </Box>
-        <Box mt="20px">
-          <Text>Supply:</Text>
-          <Input
-            placeholder="Enter token name"
+            placeholder="Enter amount"
             type="number"
-            background={"#473D70"}
-            border={"none"}
             value={tokenSupply}
             onChange={(e: any) => {
-              setTokenSupply(e.target.value);
+              setTokenSupply(parseInt(e.target.value));
             }}
           />
         </Box>
-
-        <Flex justifyContent={"flex-end"} mt="20px">
+        <Flex justifyContent={"flex-end"}>
           <Button
             my="10px"
             ml="10px"
             onClick={() => {
               setCurrentAction("");
+              setTokenAddress(contract_address);
+              setTokenSupply(0);
             }}
           >
             Cancel
@@ -138,10 +122,10 @@ export default function LaunchToken({ setCurrentAction }: any) {
           <Button
             my="10px"
             ml="10px"
-            onClick={handleDeployToken}
             background={"#2797FF"}
+            onClick={handleMintToken}
           >
-            Launch
+            Mint
           </Button>
         </Flex>
       </Box>
@@ -153,7 +137,7 @@ export default function LaunchToken({ setCurrentAction }: any) {
             <Image
               width={"100%"}
               mx="auto"
-              mt="30px "
+              mt="30px"
               src="https://cdn.dribbble.com/users/2514124/screenshots/5474610/crypto6_3.gif"
             />
           </Box>
@@ -169,7 +153,7 @@ export default function LaunchToken({ setCurrentAction }: any) {
             />
           </Box>
         ) : txStatus == "Success" ? (
-            <Box background={"white"} p="20px" borderRadius={"10px"}>
+          <Box background={"white"} p="20px" borderRadius={"10px"}>
             <Text fontWeight={"bold"}>Transaction Status:</Text>
             <Text>Success</Text>
             <Image
@@ -178,11 +162,13 @@ export default function LaunchToken({ setCurrentAction }: any) {
               mt="30px"
               src="https://cdn.dribbble.com/users/911154/screenshots/3332845/vfmov3.gif"
             />
-            <Text fontWeight={"bold"}>Contract Address:</Text>
-            <Text>{contractAddress}</Text>
-
-            <Text fontWeight={"bold"} mt="30px">Transaction URL:</Text>
-            <Link href={`https://sepolia.etherscan.io/tx/${receiptHash}`} target="_blank">https://sepolia.etherscan.io/tx/{receiptHash}</Link>
+            <Text fontWeight={"bold"}>Transaction URL:</Text>
+            <Link
+              href={`https://sepolia.etherscan.io/tx/${receiptHash}`}
+              target="_blank"
+            >
+              https://sepolia.etherscan.io/tx/{receiptHash}
+            </Link>
           </Box>
         ) : null}
       </Box>

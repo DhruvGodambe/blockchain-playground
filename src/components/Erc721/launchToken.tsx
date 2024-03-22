@@ -82,9 +82,7 @@ export default function LaunchToken({ setCurrentAction }: any) {
         p="10px 20px"
         width={"60%"}
         mr="5%"
-        background={"#363355"}
-        color={"white"}
-        border="1px solid #445276"
+        background={"#63CEDD"}
         borderRadius={"10px"}
       >
         <Box mt="20px">
@@ -92,8 +90,6 @@ export default function LaunchToken({ setCurrentAction }: any) {
           <Input
             placeholder="Enter token name"
             value={tokenName}
-            background={"#473D70"}
-            border={"none"}
             onChange={(e: any) => {
               setTokenName(e.target.value);
             }}
@@ -104,8 +100,6 @@ export default function LaunchToken({ setCurrentAction }: any) {
           <Input
             placeholder="Enter token symbol"
             value={tokenSymbol}
-            background={"#473D70"}
-            border={"none"}
             onChange={(e: any) => {
               setTokenSymbol(e.target.value);
             }}
@@ -116,8 +110,6 @@ export default function LaunchToken({ setCurrentAction }: any) {
           <Input
             placeholder="Enter token name"
             type="number"
-            background={"#473D70"}
-            border={"none"}
             value={tokenSupply}
             onChange={(e: any) => {
               setTokenSupply(e.target.value);

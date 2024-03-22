@@ -24,7 +24,7 @@ const Home = () => {
       <Flex minHeight={"100vh"}>
         <Siderbar/>
         <Box width={"80%"}>
-          <Navbar title={"ERC20 Token"} />
+          <Navbar title={"ERC721 Token"} />
           <Grid
             width={"90%"}
             mx="auto"
